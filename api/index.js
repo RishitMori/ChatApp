@@ -11,9 +11,13 @@ const ws = require("ws");
 const fs = require("fs");
 
 dotenv.config();
-mongoose.connect(process.env.MONGO_URL, (err) => {
-  if (err) throw err;
-});
+try {
+  mongoose.connect(process.env.MONGO_URL).then(() => {
+    console.log("mongodb connected");
+  });
+} catch (error) {
+  console.log("database not connected");
+}
 const jwtSecret = process.env.JWT_SECRET;
 const bcryptSalt = bcrypt.genSaltSync(10);
 
@@ -101,6 +105,11 @@ app.post("/logout", (req, res) => {
 app.post("/register", async (req, res) => {
   const { username, password } = req.body;
   try {
+    const user = await User.find({ username: username });
+    if (user) {
+      return res.redirect("/register");
+    }
+
     const hashedPassword = bcrypt.hashSync(password, bcryptSalt);
     const createdUser = await User.create({
       username: username,
@@ -153,7 +162,6 @@ wss.on("connection", (connection, req) => {
       clearInterval(connection.timer);
       connection.terminate();
       notifyAboutOnlinePeople();
-      console.log("dead");
     }, 1000);
   }, 5000);
 
